@@ -1,0 +1,395 @@
+diff --git a/llvm_mode/Makefile b/llvm_mode/Makefile
+index 5d4da94..91aee77 100644
+--- a/llvm_mode/Makefile
++++ b/llvm_mode/Makefile
+@@ -22,7 +22,7 @@ BIN_PATH     = $(PREFIX)/bin
+ 
+ VERSION     = $(shell grep '^\#define VERSION ' ../config.h | cut -d '"' -f2)
+ 
+-LLVM_CONFIG ?= llvm-config
++LLVM_CONFIG ?= llvm-config-3.8
+ 
+ CFLAGS      ?= -O3 -funroll-loops
+ CFLAGS      += -Wall -D_FORTIFY_SOURCE=2 -g -Wno-pointer-sign \
+@@ -50,14 +50,14 @@ endif
+ # probably better.
+ 
+ ifeq "$(origin CC)" "default"
+-  CC         = clang
+-  CXX        = clang++
++  CC         = clang-3.8
++  CXX        = clang++-3.8
+ endif
+ 
+ ifndef AFL_TRACE_PC
+-  PROGS      = ../afl-clang-fast ../afl-llvm-pass.so ../afl-llvm-rt.o ../afl-llvm-rt-32.o ../afl-llvm-rt-64.o
++  PROGS      = ../afl-clang-fast ../afl-llvm-pass.so ../afl-llvm-rt.o ../afl-llvm-rt-32.o ../afl-llvm-rt-64.o TraceUtils.o
+ else
+-  PROGS      = ../afl-clang-fast ../afl-llvm-rt.o ../afl-llvm-rt-32.o ../afl-llvm-rt-64.o
++  PROGS      = ../afl-clang-fast ../afl-llvm-rt.o ../afl-llvm-rt-32.o ../afl-llvm-rt-64.o TraceUtils.o
+ endif
+ 
+ all: test_deps $(PROGS) test_build all_done
+@@ -80,7 +80,7 @@ endif
+ 	ln -sf afl-clang-fast ../afl-clang-fast++
+ 
+ ../afl-llvm-pass.so: afl-llvm-pass.so.cc | test_deps
+-	$(CXX) $(CLANG_CFL) -shared $< -o $@ $(CLANG_LFL)
++	$(CXX) $(CLANG_CFL) -std=c++11 -shared TraceUtils.cpp $< -o $@ $(CLANG_LFL)
+ 
+ ../afl-llvm-rt.o: afl-llvm-rt.o.c | test_deps
+ 	$(CC) $(CFLAGS) -fPIC -c $< -o $@
+@@ -93,6 +93,9 @@ endif
+ 	@printf "[*] Building 64-bit variant of the runtime (-m64)... "
+ 	@$(CC) $(CFLAGS) -m64 -fPIC -c $< -o $@ 2>/dev/null; if [ "$$?" = "0" ]; then echo "success!"; else echo "failed (that's fine)"; fi
+ 
++TraceUtils.o: TraceUtils.cpp
++	$(CXX) $(CXXFLAGS) -std=c++11 -m64 -fPIC -c $< -o $@ 2>/dev/null
++
+ test_build: $(PROGS)
+ 	@echo "[*] Testing the CC wrapper and instrumentation output..."
+ 	unset AFL_USE_ASAN AFL_USE_MSAN AFL_INST_RATIO; AFL_QUIET=1 AFL_PATH=. AFL_CC=$(CC) ../afl-clang-fast $(CFLAGS) ../test-instr.c -o test-instr $(LDFLAGS)
+diff --git a/llvm_mode/TraceUtils.cpp b/llvm_mode/TraceUtils.cpp
+new file mode 100644
+index 0000000..42c9a54
+--- /dev/null
++++ b/llvm_mode/TraceUtils.cpp
+@@ -0,0 +1,191 @@
++/*
++ * TraceUtils.cpp
++ *
++ * Static helper methods for dealing with certain types of
++ * trace files. Mostly just those specified in early
++ * versions of libtrays. It is possible that we should 
++ * jack this out and make it an interface or something to
++ * implement for implementations of libtrays. I.e., the
++ * two would be tied and thus reasonable for any changing
++ * of libtrays trace methods.
++ *
++ */
++
++
++#include <iostream>
++#include <fstream>
++#include <sstream>
++#include <string>
++
++#include <map>
++#include <set>
++#include <vector>
++
++#include "TraceUtils.h"
++
++/*
++ * origTraceFile - path to original trace log file 
++ * sampleTraceFile - path to sample trace you diff against original
++ * precedingBlockCount - how many blocks prior to diverge to include
++ * sameCount - used to return # of initial trace entries are the same
++ *
++ * returns a vector of maps string to string... the last two are the
++ * diverging blocks (i.e., second to last is reached by orig and last
++ * is reached by sample). The number leading up to that will be 
++ * dictated by precedingBlockCount
++ *
++ */
++std::vector<std::map<std::string, std::string>>
++TraceUtils::DiffTraceForDivergentBlocks(std::string origTraceFile,
++  std::string sampleTraceFile, unsigned precedingBlockCount,
++  unsigned *sameCount)
++{
++	std::vector<std::map<std::string, std::string>> vRet;
++	unsigned scRet = 0;
++
++	std::ifstream origHandle(origTraceFile);
++	std::ifstream sampleHandle(sampleTraceFile);
++
++	std::string predLine;
++	std::vector<std::string> predLines;	// May blow up memory, but fuck it.
++	std::string origLine;
++	std::string sampleLine;
++
++	while (1) {
++		std::getline(origHandle, origLine);
++		std::getline(sampleHandle, sampleLine);	
++
++		std::string origCD;
++		std::string origName;
++		std::string origNum;
++		std::string origAddr;
++		std::string sampCD;
++		std::string sampName;
++		std::string sampNum;
++		std::string sampAddr;
++
++		std::stringstream origConv(origLine);
++		origConv >> origCD >> origName >> origNum >> origAddr;
++		std::stringstream sampConv(sampleLine);
++		sampConv >> sampCD >> sampName >> sampNum >> sampAddr;
++
++		// Must split because we will have different block addresses displayed
++		if (origCD == sampCD && \
++		  origName == sampName && \
++		  origNum == sampNum) {
++			predLine = origLine;
++			predLines.push_back(origLine);
++			++scRet;
++			continue;
++		}
++		break;
++	}
++	if (sameCount != NULL) {
++		*sameCount = scRet;
++	}
++
++	unsigned numPredLines = predLines.size();
++	// Reduce if we wanted more than we can get..
++	if (precedingBlockCount > numPredLines) {
++		precedingBlockCount = numPredLines;
++	}
++	unsigned numToChuck = numPredLines - precedingBlockCount;
++	
++	auto pit = predLines.begin();
++	while (numToChuck > 0) {
++		++pit;
++		--numToChuck;
++	}
++
++	std::string nCallDepth;
++	std::string funcName;
++	std::string blkNumI;
++    std::string blkAddr;
++	while (precedingBlockCount > 0) {	
++		predLine = *pit;
++		std::stringstream conv(predLine);
++		conv >> nCallDepth >> funcName >> blkNumI >> blkAddr;
++		std::map<std::string, std::string> m;
++		m["depth"] = nCallDepth;
++		m["function"] = funcName;
++		m["block"] = blkNumI; 
++		m["blockaddr"] = "0x" + blkAddr;
++		vRet.push_back(m);	
++
++		++pit;
++		--precedingBlockCount;
++	}
++	std::stringstream c2(origLine);
++	c2 >> nCallDepth >> funcName >> blkNumI >> blkAddr;
++	std::map<std::string, std::string> m2;
++	m2["depth"] = nCallDepth;
++	m2["function"] = funcName;
++	m2["block"] = blkNumI; 
++	m2["blockaddr"] = "0x" + blkAddr;
++	vRet.push_back(m2);
++
++	std::stringstream c3(sampleLine);
++	c3 >> nCallDepth >> funcName >> blkNumI >> blkAddr;
++	std::map<std::string, std::string> m3;
++	m3["depth"] = nCallDepth;
++	m3["function"] = funcName;
++	m3["block"] = blkNumI; 
++	m3["blockaddr"] = "0x"+blkAddr;
++	vRet.push_back(m3);
++
++	return vRet;	
++}
++
++std::set<TraceEntry> 
++TraceUtils::ParseTraceFile(std::string traceFile)
++{
++	std::ifstream fileHandle(traceFile);
++	std::string entryFnBlkNm;
++	std::set<TraceEntry> traceEntries;
++	unsigned long count = 0;
++	unsigned long lineno = 0;
++
++	while (std::getline(fileHandle, entryFnBlkNm)) {
++		++lineno;
++		if (entryFnBlkNm.find("#", 0) == 0) {
++			continue;
++		}
++
++
++		std::stringstream conv(entryFnBlkNm);
++		unsigned long nCallDepth;
++		std::string funcName;
++		unsigned blkNumI;
++		std::string blkAddr;
++		conv >> nCallDepth >> funcName >> blkNumI >> blkAddr;
++		if (conv.fail()) {
++			std::cout << "Issue parsing trace file line num "  \
++			  << lineno << "..continuing\n"; 
++			continue;	
++		}
++		blkAddr = "0x" + blkAddr;
++		uint64_t blkAddrI = std::stoul(blkAddr, nullptr, 16);
++		++count;
++/*
++		std::cout << "Entry: " << count << ","  \
++		  << nCallDepth << "," << funcName<< "," <<blkNumI<< "\n";
++ */
++		TraceEntry t(count, nCallDepth, funcName, blkNumI, blkAddrI);
++		traceEntries.insert(t);
++	}
++	fileHandle.close();
++	return traceEntries;
++}
++std::vector<const TraceEntry *>
++TraceUtils::TraceByFunction(std::string fnName, std::set<TraceEntry> allTraces)
++{
++	std::vector<const TraceEntry *> prj;
++
++	for (auto i = allTraces.begin(); i != allTraces.end(); ++i) {
++		const TraceEntry *t = &*i;
++		if (t->getFunction() == fnName) {
++			prj.push_back(t);
++		}
++	}
++	return prj;
++}
+diff --git a/llvm_mode/TraceUtils.h b/llvm_mode/TraceUtils.h
+new file mode 100644
+index 0000000..0f666d8
+--- /dev/null
++++ b/llvm_mode/TraceUtils.h
+@@ -0,0 +1,61 @@
++#ifndef	__TRACEUTILS_H
++#define	__TRACEUTILS_H
++
++/* 
++ * Intended to represent a single line in a libtrays trace file.
++ */
++class TraceEntry {
++	unsigned long	count;
++	unsigned long	depth;
++	std::string		function;
++	unsigned		block;
++	uint64_t		blockaddr;
++
++public:
++	TraceEntry(unsigned long c, unsigned long d, std::string f, unsigned b,
++	  uint64_t ba) :
++	  count(c), depth(d), function(f), block(b), blockaddr(ba) {}
++
++	unsigned long getCount() const { return count; }
++	unsigned long getDepth() const { return depth; }
++	std::string	getFunction() const { return function; }
++	unsigned getBlock() const { return block; }
++	uint64_t getBlockAddr() const { return blockaddr; }
++
++	std::string str() const {
++		std::stringstream m;
++		m << std::hex << blockaddr;
++		std::string hv(m.str());
++		return function + ":b" + std::to_string(block) + ":d" + \
++		  std::to_string(depth) + ":a0x" + hv;
++	}
++	
++	bool operator==(const TraceEntry &rhs) const {
++		return count == rhs.getCount();
++	}
++	bool operator< (const TraceEntry &rhs) const {
++		return count < rhs.getCount();
++	}
++};
++
++/*
++ * Static helper functions for dealing with libtrays 
++ * trace files. Of course.... these are specific to my
++ * version of libtrays, so really, should be some class
++ * that is subclassed, etc.
++ * *shrug*
++ */
++class TraceUtils {
++
++public: 
++	static std::set<TraceEntry> ParseTraceFile(std::string);
++	static std::vector<std::map<std::string, std::string>>
++	  DiffTraceForDivergentBlocks(std::string origTraceFile,
++	  std::string sampleTraceFile,
++	  unsigned precedingBlockCount,
++	  unsigned *sameCount);
++
++	static std::vector<const TraceEntry *> TraceByFunction(std::string,
++	  std::set<TraceEntry>);
++};
++#endif
+diff --git a/llvm_mode/afl-llvm-pass.so.cc b/llvm_mode/afl-llvm-pass.so.cc
+index 04f3ec4..979908b 100644
+--- a/llvm_mode/afl-llvm-pass.so.cc
++++ b/llvm_mode/afl-llvm-pass.so.cc
+@@ -31,6 +31,11 @@
+ #include <stdlib.h>
+ #include <unistd.h>
+ 
++#include <iostream>
++#include <sstream>
++#include <string>
++#include <set>
++
+ #include "llvm/ADT/Statistic.h"
+ #include "llvm/IR/IRBuilder.h"
+ #include "llvm/IR/LegacyPassManager.h"
+@@ -38,6 +43,8 @@
+ #include "llvm/Support/Debug.h"
+ #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+ 
++#include "TraceUtils.h"
++
+ using namespace llvm;
+ 
+ namespace {
+@@ -107,10 +114,43 @@ bool AFLCoverage::runOnModule(Module &M) {
+   /* Instrument all the things! */
+ 
+   int inst_blocks = 0;
+-
+-  for (auto &F : M)
++  /* XXX FIXME(roachspray) what do you think :P */
++  std::set<TraceEntry> traceFile = TraceUtils::ParseTraceFile("trace.log");
++  for (auto &F : M) {
++    bool instrumentAllBlocks = false;
++    if (F.isDeclaration() || F.isIntrinsic()) {
++      continue;
++    }
++    std::vector<const TraceEntry *> ftraces; 
++    if (F.hasName() == false) {
++      instrumentAllBlocks = true;
++    } else {
++      std::string fname = F.getName().str();
++      ftraces= TraceUtils::TraceByFunction(fname, traceFile);
++      if (ftraces.empty()) {
++        instrumentAllBlocks = true;
++      }
++    }
+     for (auto &BB : F) {
+-
++      if (!instrumentAllBlocks) {
++        // Possibly do this another way?
++        Instruction *iwithMD = BB.getFirstNonPHI();
++        std::string blkname = cast<MDString>(iwithMD->getMetadata("fnblk")->getOperand(0))->getString().str();
++        std::istringstream strm(blkname);
++        std::string fn;
++        std::string blknumstr;
++        strm >> fn >> blknumstr;
++        unsigned blknum = std::stoul(blknumstr, nullptr, 10);
++        bool instThisBlock = false;
++        for (auto fi = ftraces.begin(); fi != ftraces.end(); ++fi) {
++          const TraceEntry *te = *fi;
++          if (te->getBlock() == blknum) {
++            instThisBlock = true;
++            break;
++          }
++        }
++        if (!instThisBlock) continue;
++      }
+       BasicBlock::iterator IP = BB.getFirstInsertionPt();
+       IRBuilder<> IRB(&(*IP));
+ 
+@@ -152,6 +192,7 @@ bool AFLCoverage::runOnModule(Module &M) {
+       inst_blocks++;
+ 
+     }
++  }
+ 
+   /* Say something nice. */
+ 

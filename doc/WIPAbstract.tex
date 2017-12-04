@@ -1,0 +1,84 @@
+\documentclass[11pt]{acmart}
+\usepackage{geometry}                % See geometry.pdf to learn the layout options. There are lots.
+\geometry{letterpaper}                   % ... or a4paper or a5paper or ... 
+%\geometry{landscape}                % Activate for for rotated page geometry
+%\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{graphicx}
+%\usepackage{amssymb}
+\usepackage{epstopdf}
+\usepackage{hyperref}
+\usepackage{multicol}
+\usepackage{algpseudocode,algorithm2e}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{conj}{Conjecture}
+\newtheorem*{req}{Requirement}
+
+
+\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
+
+
+\title{\vspace{-4.0cm}Pruneskin: Fuzzing Hybrid Program Slices}
+\author{Andrew R. Reiter\\
+Veracode Inc.\\
+areiter@veracode.com}
+\date{}                                           
+
+\begin{document}
+\maketitle
+\begin{multicols}{2}
+
+\section{Abstract}
+In recent years, there has been increased research into improving fuzz testing techniques, in particular in
+developing in-process, evolutionary fuzzers \cite{DeMott} \cite{AFL} \cite{LibFuzzer}. While
+initial work had the goal of increased code coverage through a feedback loop between execution and the mutation
+of inputs, newer works are increasingly taking into account data flow analysis (DFA) to improve guiding the fuzzer
+toward execution paths of greater interest \cite{Vuzzer}, \cite{Choronzon}. The next wave of research has been multifold
+where there is an greater use of static analysis to help build input corpora \cite{StaticPA},  
+fault localization techniques \cite{StaticExp}, and hybrid static and dynamic methods to support targeted (or focused)
+guided fuzzing \cite{HybridVerimag} \cite{NeedleHeap}.
+
+The goal of this work is to improve fuzzing of large, ever-changing code bases and fuzzing modules within
+a code base by targeting a subprogram of a program. A subprogram here can be considered any subgraph $S$ of a flow graph of $P$.
+The hope is to:
+\begin{itemize}
+\item Decrease the time it takes to begin fuzzing a target $S$ relative to fuzzing $P$ with the same inputs
+\item Increase the time spent fuzzing a target a target $S$ relative to fuzzing $P$ with the same inputs
+\item Decrease the memory footprint of the executable being fuzzed
+\end{itemize}
+
+The general approach taken is to perform hybrid slicing  \cite{HybridSlice}
+in order to generate modified executables that may be fuzzed by tools such as AFL, LibFuzzer, and others. Fuzzing slices
+requires that there be an additional requirement for slice generation; this is in addition to the two requirements specified
+in \cite{ProgSlice} related to (1) creation of $S$ by statement deletion and (2) inputs $I$ that halt program $P$ should also halt the subprogram
+$S$. The requirement is:
+\begin{req}
+For any input $I'$ that causes a fault in the execution of S, there exists a map $\xi : I' \mapsto I$ such that $I$ causes a fault in execution of $P$.
+\end{req}
+
+Pruneskin is the set of tools developed by the author that performs basic block-level trace point injection for dynamic control flow analysis, static value flow analysis (built on \cite{SVF}), program slice generation, and attempts at mapping of fault-causing inputs of $S$ to those for $P$. The trace point injection, value flow analysis, and program slice generation all work using LLVM's Intermediate Representation (IR) \cite{LLVM}
+\cite{LLVMIR}. The high-level workflow is as follows
+\begin{algorithm}[H]
+\KwData{Program $P$ in IR form.\\
+Target subgraph $S$ of $P$\\
+Input $I$ st execution reaches S\\
+Target input argument $arg$}
+\hrulefill\\
+$inputFlow\leftarrow valueFlow(P, arg)$\\
+$P_\tau \leftarrow injectTracePoints(P)$\\
+$trace \leftarrow exec(P_\tau, I)$\\
+$P_S \leftarrow hybrid(P, inputFlow, trace)$\\
+$crash_{S} \leftarrow fuzz(P_{S}, I)$\\
+$crash_{P} \leftarrow \xi(P, P_{S}, crash_{S})$
+\end{algorithm}
+
+The current state of Pruneskin is that the tools are in place to perform dynamic control flow analysis and static value flow analysis and
+use the data generated to perform hybrid program slicing; the resultant program is capable of being fuzzed as intended. Fuzz 
+reachability of target time and time spent fuzzing on target have shown to be \textbf{OK, I NEED MY STATS, BUT GAH} The current focus
+of work is primarily related to effective generation of maps $\xi$.
+
+Further areas of investigation related to independent fuzzing of intervals of programs is of interest
+\bibliographystyle{plain}
+\bibliography{pskin}
+\end{multicols}
+\end{document} 

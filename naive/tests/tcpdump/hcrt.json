@@ -1,0 +1,9 @@
+{
+  "out_dir" : "/home/areiter/pruneskin/test/tcpdump/work_hcrt",
+  "ps_root" : "/home/areiter/pruneskin",
+  "bc_file" : "tcpdump.bc",
+  "compile_lib" : ["-lcrypto", "-lssl", "-lpcap"],
+  "fnlist_file" : "probecallfunctions.txt",
+  "depths" : [  7 ],
+  "command" : "-r @@"
+}

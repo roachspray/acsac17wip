@@ -1,0 +1,9 @@
+{
+  "out_dir" : "/home/areiter/pruneskin/test/cracklib-2.9.2/pskin_common/unpacker_work",
+  "ps_root" : "/home/areiter/pruneskin",
+  "bc_file" : "clunpacker_nomagic.bc",
+  "compile_lib" : ["-lz" ],
+  "fnlist_file" : "probecallfunctions.txt",
+  "depths" : [  1, 2, 3],
+  "command" : "@@ /home/areiter/pruneskin/test/cracklib-2.9.2/pskin_common/cb.pwd /home/areiter/pruneskin/test/cracklib-2.9.2/pskin_common/cb.hwm"
+}

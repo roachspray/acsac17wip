@@ -1,0 +1,9 @@
+{
+  "out_dir" : "/home/areiter/pruneskin/test/exifprobe/work_exifprobe",
+  "ps_root" : "/home/areiter/pruneskin",
+  "bc_file" : "exifprobe.bc",
+  "fnlist_file" : "probecalls.txt",
+  "compile_lib" : [ "-lm" ],
+  "depths" : [ 1, 2, 3, 4, 5, 6  ],
+  "command" : "-c @@"
+}

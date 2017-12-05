@@ -1,0 +1,13 @@
+fclose
+feof
+ferror
+fflush
+fgetc
+fileno
+fopen
+fork
+fprintf
+fread
+free
+fseek
+ftell

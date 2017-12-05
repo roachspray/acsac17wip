@@ -1,0 +1,25 @@
+PBIN=../../build/bin/Pruneskin
+CLNG=clang-4.0
+AFLCLNG=afl-clang-fast
+RT=../..
+
+build:
+	LLVM_CC_NAME=$(CLNG) LLVM_COMPILER=clang CC=wllvm ./configure
+	LLVM_CC_NAME=$(CLNG) LLVM_COMPILER=clang make
+	extract-bc tcpdump
+
+cov:
+	CC=$(CLNG) ./configure CFLAGS="-fprofile-arcs -ftest-coverage" CXXFLAGS="-fprofile-arcs -ftest-coverage"
+	CC=$(CLNG) make
+	mv tcpdump tcpdump_cov
+	make clean
+	make distclean
+	
+
+distclean:
+	rm -f .*.bc .*.o *.o *.bc *.s tcpdump_tp tcpdump_prune tcpdump_prune_icmp_afl tcpdump_prune_arp_afl
+	rm -f tcpdump.log
+	make clean
+	make distclean
+
+all: build 

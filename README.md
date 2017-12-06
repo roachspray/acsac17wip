@@ -155,9 +155,7 @@ removing a block, you could implicitly be removing the possible use of other blo
 To reduce program on-disk and in-memory size, one could attempt to determine these
 blocks and remove them.
 
-```
-put algorithm here
-```
+See the [PruneHelp](https://github.com/roachspray/acsac17wip/blob/master/naive/src/Transform/PruneHelp.cpp)  and [PruneBlocks](https://github.com/roachspray/acsac17wip/blob/master/naive/src/Transform/PruneBlocks.cpp) code for this naive method. 
 
 ### Mapping Crashes
 
@@ -165,10 +163,13 @@ Currently all mapping of crashes is done by attempting to use found crashes as
 inputs to fuzzing the original program. This is under the thinking that such a 
 smple could be, under some measure, not far from a sample that will crash the
 original and that the fuzzer will make that leap. Not very good :-) But kind of
-interesting to flesh out.
+interesting to flesh out. I simply take the original bitcode and instrument
+with afl-fast-clang and let it rip
 
 There are a few other ideas for this that are more involved. They are investigated
-in the next steps.md and are/or should be listed as open issues.
+in the next steps.md and are/or should be listed as open issues. They include
+using iterated fuzzing steps, modified fuzzer, and CSP solving.
+
 
 ### Next steps
 

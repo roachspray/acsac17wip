@@ -6,7 +6,7 @@
 \newtheorem{conj}{Conjecture}[section]
 \let\footnotesize\tiny
 
-%\title{Investigation: Fuzzing (Hybrid) Program Slices}
+%\title{Pruneskin: Fuzzing Program Slices}
 %\author{Andrew R. Reiter\\
 %\tiny CA Veracode}
 %\date{\today}
@@ -18,7 +18,7 @@
 %\section{Investigating }
 \frame
 {
-	\frametitle{Investigating Fuzzing (Hybrid) Program Slices}
+	\frametitle{Pruneskin: Investigation into Fuzzing Program Slices}
 	\tiny
 	
 	\fboxsep=0pt
@@ -30,7 +30,7 @@
 		\KwData{Program P, sample input I}
 		\KwResult{$C = $\{$c \in inputs(P) \vert exec(P,c) \rightarrow$ crash\}}
 		$A \leftarrow Analysis(P, I)$\;
-		$S_d \leftarrow Slice(P, A, $ depth $d)$\;
+		$S_d \leftarrow Slice(P, A, $ depth\footnote{The reasoning for \emph{depth} is that the goal is to fuzz a subgraph of a graph and not separate.} $d)$\;
 		$\{c'_{d,i}\}_i \leftarrow Fuzz(S_d, I)$\;
 		\For{$c' \in \{c'_{d,i}\}_i$}{
 			$c \leftarrow MapCrash(P, S_d, c')$\;
@@ -46,12 +46,11 @@
 	\item maps samples crashing $S_d$ to samples crashing $P$ with minimal difficulty or human interaction (heh).
 	\end{itemize}
 	\end{conj}
-
 	\end{minipage}
 }
-	
 
-	Many possibilities for Analysis, Slice, Fuzz, and MapCrash functions. The bery \textbf{naive} starting approach is implemented:
+\vfill	
+	A  \textbf{naive} starting approach is implemented:
 	\begin{itemize}
 	\item For \emph{Analysis()}: execution flow from a given desirable input (i.e. execution trace log)
 	\item For \emph{Slice()}: attempt to remove the non-exec'd basic blocks of functions reached, unless they are the destination
@@ -59,12 +58,11 @@
 	\item For \emph{MapCrash()}: fuzz original $P$ with input samples that are crashes from fuzzing $S_d$. 
 	with the idea being that under some measurable fuzzing space $\left\vert d(c) - d(c') \right\vert \leq$ something reasonable.
 	\end{itemize}
-	and using afl-fuzz. 
+	and using afl-fuzz.  But, many possibilities for Analysis, Slice, Fuzz, \& MapCrash functions. 
 	
 	
-	Find this code and horseplay: \url{https://github.com/roachspray/acsac17wip}
+	Find this code and horseplay: \url{https://github.com/roachspray/acsac17wip/blob/master/naive}
 }
-
 
 \frame
 {
@@ -73,43 +71,46 @@
 
 	
 	\begin{center}
-	\begin{tabular}{|l | l | c  | c | c | c| c |}
+	\begin{tabular}{| c | c | c  | c | c | c |}
 	\hline
-	Program          & Input      & Slice Depth  & P 5h fuzz &  S\_d 1h fuzz & Mapped 4h fuzz & Size Change\\ \hline
-	cracklib-2.9.2-5 & smalldict   & 1 & 0 & 3 & 0 & \\
-	                 &             & 2 & 0 & 0 & 0 & \\
-	                 &             & 3 & 0 & 0 & 0 & \\ \hline
-	exifprobe current & tryone.jpg & 3 & 4 & 27 & 37 & \\ 
-	                  &            & 4 & 4 & 30 & 50 & \\ 
-	                  &            & 5 & 4 & 27 & 13 & \\ 
-	                  &            & 6 & 4 & 28 & 30 & \\ \hline
-	tcpdump current   & ntp.pcap   & 6 & 0 & 0 & 0  & \\ \
-	                  &   & 7 & 0 & 0 & 0  & \\ 
-	                  &    & 8 & 0 & 0 & 0  & \\ 
-	                  &    & 9 & 0 & 0 & 0  & \\ \cline{2-7}
-                      & hcrt.pcap  & 7 & 0 & 1 & 0  & \\
-                      &            & 8 & 0 & 6 & 0  & \\ 
-                      &            & 9 & 0 & 0 & 0  & \\
-                      &            & 10 & 0 & 0 & 0 & \\ \cline{2-7}
-                      & arp.pcap   & 3 & 0 & 0 & 0 & \\ 
-                      &    & 4 & 0 & 0 & 0 & \\                    
-                      &    & 5 & 0 & 0 & 0 & \\ 
-                      &    & 6 & 0 & 0 & 0 & \\
-                      &    & 7 & 0 & 0 & 0 & \\
-                      &    & 8 & 0 & 0 & 0 & \\ \hline                                                                 
+	Program            & Input        & Slice Depth  & P 5h fuzz & S\_d 1h fuzz & Mapped 4h fuzz \\ \hline
+	cracklib-2.9.2-5 & smalldict   &  1                 & 0             & 3                    & 0  \\
+	                 	&                  &  2 		  & 0 		   & 0 			& 0  \\
+	                 	&             	   & 	3 		 & 0 		   & 0 			& 0  \\ \hline
+	exifprobe current & tryone.jpg & 3 		 & 4 		   & 27 			& 37  \\ 
+	                  &            & 4 & 4 & 30 & 50  \\ 
+	                  &            & 5 & 4 & 27 & 13  \\ 
+	                  &            & 6 & 4 & 28 & 30  \\ \hline
+	tcpdump current   & ntp.pcap   & 6 & 0 & 0 & 0   \\ 
+	                  &   & 7 & 0 & 0 & 0   \\ 
+	                  &    & 8 & 0 & 0 & 0   \\ 
+	                  &    & 9 & 0 & 0 & 0   \\ \cline{2-6}
+                      & hcrt.pcap  & 7 & 0 & 1 & 0   \\
+                      &            & 8 & 0 & 6 & 0   \\ 
+                      &            & 9 & 0 & 0 & 0   \\
+                      &            & 10 & 0 & 0 & 0  \\ \cline{2-6}
+                      & arp.pcap   & 3 & 0 & 0 & 0  \\ 
+                      &    & 4 & 0 & 0 & 0  \\                    
+                      &    & 5 & 0 & 0 & 0  \\ 
+                      &    & 6 & 0 & 0 & 0  \\
+                      &    & 7 & 0 & 0 & 0  \\
+                      &    & 8 & 0 & 0 & 0  \\ \hline                                                                 
 	\end{tabular}
 	\end{center}
 
-	
-	So, there are some concerns:
+
+	Fundamental issues with the above:	
 	\begin{itemize}
-	\item How to choose timebox times? Are they even reasonable? These are timeboxed and not-averaged timeboxed; 
-	\item How to measure success or failure? Clearly not finding bugs could imply failure.. Leads to the question of whether
-	needs to be some public data set of fuzzing methods, hardware, and times until certain specific bugs were found. Sadly might lead
-	to tuning toward those, but that's not the goal.
-	\item It seems slicing could do better reduction in code size, fix.
+	\item Timebox time selections and averaging of timebox results (handle randomness)
+	\item How to deal with (not) having groundtruth? Equality of bugs found, etc pose non-trivial issues. I yen for a
+	dataset of code, crash, time-til-found, hardware, etc etc.
+	\item Not listed: slice sizes seem invalid
 	\end{itemize}
+	
+	Inputs all found in github
 }
+
+
 
 \frame
 {
@@ -117,18 +118,22 @@
 	\tiny
 	\begin{itemize}
 	\item Improve \emph{Analysis} step. Initially included static value flow analysis, but the code was not working. Investigate clang analyze or hand developed. Also include the use of either manticore\footnote{\url{https://github.com/trailofbits/manticore}} or libdft\footnote{\url{https://www.cs.columbia.edu/~vpk/research/libdft/}}.
-	\item Improve \emph{Slice} step by better dead code removal
+
+
 	\item Improve \emph{Slice} step to use data flow information in block / function removal selection
+	\item Improve \emph{Slice} step by better dead code removal
+
 	\item Investigate  possible \emph{MapCrash} methods:
 	\begin{itemize}
 	\tiny
-	\item Cascade AFL: $(C_d \leftarrow Fuzz(S_d, In)) \rightarrow (C_{d-1} \leftarrow Fuzz(S_{d-1}, C_d)) \rightarrow \ldots \rightarrow (C_0 \leftarrow Fuzz(P, C_1))$ \\
-	and reduce times for each level.
+	\item Cascade AFL 
+\[
+(C_d \leftarrow Fuzz(S_d, In)) \rightarrow (C_{d-1} \leftarrow Fuzz(S_{d-1}, C_d)) \rightarrow \ldots \rightarrow (C_0 \leftarrow Fuzz(P, C_1))
+\]
 	
 	\item Selective AFL instrumentation based on slicing information. See \footnote{https://github.com/roachspray/acsac17wip/blob/master/patches/afl-2.51b-optionally-instrument-based-on-trace.patch}
-	\item Investigate signaling AFL from paths you don't want to explore. Equivalent to VUZZer with certain weighting scheme
-	\item Use manticore to guide program until input causes divergence from slice crash path with input. At this point, form CSP, attempt
-	to solve CSP using z3. Adjust input, continue guiding toward crash state, if possible. 
+	\item Investigate signaling AFL from undesirable paths. Equivalent to VUZZer with  weighting.
+	\item Generate crash trace from sample, use with manticore to guide program through solving CSPs as it goes toward crash state.
 	\end{itemize}
 	\end{itemize}
 	As you can tell, this work is still in it's infancy and there are many paths to investigate. Trying to determine best routes and

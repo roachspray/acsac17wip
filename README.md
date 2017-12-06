@@ -14,7 +14,10 @@ this, all with some similar issues; namely that any removal of
 compare/branch pairs will possibly result in the need to fix any
 crash samples generated on the slice so that they can cause the
 original, non-sliced program to reach the same/similar state.
-This is not necessarily a trivial problem.
+This is not necessarily a trivial problem. Also realize that the
+goal of the slice generation is to have it be compiled and executable
+within the same input parameter space as the trace run described
+below.
 
 The high level methodology being investigate is the following:
 

@@ -157,6 +157,18 @@ blocks and remove them.
 
 See the [PruneHelp](https://github.com/roachspray/acsac17wip/blob/master/naive/src/Transform/PruneHelp.cpp)  and [PruneBlocks](https://github.com/roachspray/acsac17wip/blob/master/naive/src/Transform/PruneBlocks.cpp) code for this naive method. 
 
+```
+  for d in maxdepth:1:0:
+      setFocusFunction(d)
+      if focusFunction == null:
+          continue
+      for rb in removeBlock:
+          for pred in predecessors(rb):
+             TerminatorInst t = getTerminator
+             /* attempt to remove rb from predecessor */
+```
+ 
+         
 ### Mapping Crashes
 
 Currently all mapping of crashes is done by attempting to use found crashes as
@@ -202,7 +214,7 @@ There are a couple of methods for running the code, including a python script, a
 set of shell scripts, and using opt command itself. Currently, I suggest the python
 script found in pyhelpers/. The shell scripts in helpers/ are possibly out of date.
 
-#### Running with hanker.py
+#### Running with pskin_help.py
 
 The key here is that you have a a target .bc file and any other bits (libraries) that
 you might need to compile that to an executable. You will then want to setup a json
@@ -262,7 +274,7 @@ required_keys = [ "opt",
 
 So, you can see what you might change for your setup.
 
-Once you have prepared your target's json file. You can run hanker.py -t target.json. 
+Once you have prepared your target's json file. You can run pskin_help.py -t target.json. 
 This will create the working directory and generate a trace version of your target.
 You want to run this executable on the target input sample that will reach the area
 of code you are interested in fuzzing. It will generate a trace.log file and will
@@ -273,11 +285,15 @@ beware if re-running. You could take two traces and join them... increasing the
 input information to the slice generation.
 
 So now that you have done that you want to generate slices, and slices that are
-AFL-able. You can just run hanker.py -s target.json and in the work directory you 
-will have this.  You can now fuzz the depN_afl executables.
+AFL-able. You can just run pskin_help.py -s target.json and in the work directory you 
+will have this.  You can now fuzz the depN_afl executables with AFL.
 
 If wishing to take your target.bc and instrumenting with AFL, you can use the 
 afl-clang-fast tool. Just be sure to specify AFL_CC/AFL_CXX to the correct versions
 of clang/LLVM you have used for the target.bc generation.etc
 
 
+# If need more info
+
+If need/want more info, let me know and I am happy to help. I also encourage
+people to help with more general issues or telling me it sucks :)

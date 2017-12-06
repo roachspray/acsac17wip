@@ -39,13 +39,10 @@
 	\end{algorithm}\end{minipage}}%
 \hfill%
 \fbox{
-	\begin{minipage}[t]{0.48\linewidth}
-
-	Given the algorithm to the left, the conjecture investigated is
-	
-	\begin{conj} There exists a Slice() algorithm such that the MapCrash() algorithm either
+	\begin{minipage}[t]{0.48\linewidth}	
+	\begin{conj} There exists a \text{Slice} algorithm such that the \text{MapCrash} algorithm either
 	\begin{itemize}
-	\item maps samples crashing $S_d$ to samples crashing $P$ with no modification
+	\item acts like Identity on input sample, or
 	\item maps samples crashing $S_d$ to samples crashing $P$ with minimal difficulty or human interaction (heh).
 	\end{itemize}
 	\end{conj}
@@ -54,7 +51,7 @@
 }
 	
 
-	Many possibilities for Analysis, Slice, Fuzz, and MapCrash functions. The current, very \textbf{naive} approach is implemented:
+	Many possibilities for Analysis, Slice, Fuzz, and MapCrash functions. The bery \textbf{naive} starting approach is implemented:
 	\begin{itemize}
 	\item For \emph{Analysis()}: execution flow from a given desirable input (i.e. execution trace log)
 	\item For \emph{Slice()}: attempt to remove the non-exec'd basic blocks of functions reached, unless they are the destination
@@ -63,6 +60,7 @@
 	with the idea being that under some measurable fuzzing space $\left\vert d(c) - d(c') \right\vert \leq$ something reasonable.
 	\end{itemize}
 	and using afl-fuzz. 
+	
 	
 	Find this code and horseplay: \url{https://github.com/roachspray/acsac17wip}
 }
@@ -75,30 +73,30 @@
 
 	
 	\begin{center}
-	\begin{tabular}{|l | l | l  | l | l | l| l |}
+	\begin{tabular}{|l | l | c  | c | c | c| c |}
 	\hline
 	Program          & Input      & Slice Depth  & P 5h fuzz &  S\_d 1h fuzz & Mapped 4h fuzz & Size Change\\ \hline
-	cracklib-2.9.2-5 & smalldict   & 1 & 0 & 3 & 0 & \\ \hline
-	                 &             & 2 & 0 & 0 & 0 & \\ \hline
+	cracklib-2.9.2-5 & smalldict   & 1 & 0 & 3 & 0 & \\
+	                 &             & 2 & 0 & 0 & 0 & \\
 	                 &             & 3 & 0 & 0 & 0 & \\ \hline
-	exifprobe current & tryone.jpg & 3 & ? & 27 & 37 & \\ \hline
-	                  &            & 4 & ? & 30 & 50 & \\ \hline
-	                  &            & 5 & ? & 27 & 13 & \\ \hline
-	                  &            & 6 & ? & 28 & 30 & \\ \hline
-	tcpdump current   & ntp.pcap   & 6 & 0 & 0 & 0  & \\ \hline
-	                  & ntp.pcap   & 7 & 0 & 0 & 0  & \\ \hline
-	                  & ntp.pcap   & 8 & 0 & 0 & 0  & \\ \hline
-	                  & ntp.pcap   & 9 & 0 & 0 & 0  & \\ \hline
-                      & hcrt.pcap  & 7 & 0 & 1 & 0  & \\ \hline
-                      &            & 8 & 0 & 6 & 0  & \\ \hline
-                      &            & 9 & 0 & 0 & 0  & \\ \hline
-                      &            & 10 & 0 & 0 & 0 & \\ \hline
-                      & arp.pcap   & 3 & 0 & 0 & 0 & \\ \hline
-                      &    & 4 & 0 & 0 & 0 & \\ \hline                      
-                      &    & 5 & 0 & 0 & 0 & \\ \hline
-                      &    & 6 & 0 & 0 & 0 & \\ \hline
-                      &    & 7 & 0 & 0 & 0 & \\ \hline
-                      &    & 8 & 0 & 0 & 0 & \\ \hline                                                                  
+	exifprobe current & tryone.jpg & 3 & 4 & 27 & 37 & \\ 
+	                  &            & 4 & 4 & 30 & 50 & \\ 
+	                  &            & 5 & 4 & 27 & 13 & \\ 
+	                  &            & 6 & 4 & 28 & 30 & \\ \hline
+	tcpdump current   & ntp.pcap   & 6 & 0 & 0 & 0  & \\ \
+	                  &   & 7 & 0 & 0 & 0  & \\ 
+	                  &    & 8 & 0 & 0 & 0  & \\ 
+	                  &    & 9 & 0 & 0 & 0  & \\ \cline{2-7}
+                      & hcrt.pcap  & 7 & 0 & 1 & 0  & \\
+                      &            & 8 & 0 & 6 & 0  & \\ 
+                      &            & 9 & 0 & 0 & 0  & \\
+                      &            & 10 & 0 & 0 & 0 & \\ \cline{2-7}
+                      & arp.pcap   & 3 & 0 & 0 & 0 & \\ 
+                      &    & 4 & 0 & 0 & 0 & \\                    
+                      &    & 5 & 0 & 0 & 0 & \\ 
+                      &    & 6 & 0 & 0 & 0 & \\
+                      &    & 7 & 0 & 0 & 0 & \\
+                      &    & 8 & 0 & 0 & 0 & \\ \hline                                                                 
 	\end{tabular}
 	\end{center}
 
@@ -128,6 +126,7 @@
 	and reduce times for each level.
 	
 	\item Selective AFL instrumentation based on slicing information. See \footnote{https://github.com/roachspray/acsac17wip/blob/master/patches/afl-2.51b-optionally-instrument-based-on-trace.patch}
+	\item Investigate signaling AFL from paths you don't want to explore. Equivalent to VUZZer with certain weighting scheme
 	\item Use manticore to guide program until input causes divergence from slice crash path with input. At this point, form CSP, attempt
 	to solve CSP using z3. Adjust input, continue guiding toward crash state, if possible. 
 	\end{itemize}

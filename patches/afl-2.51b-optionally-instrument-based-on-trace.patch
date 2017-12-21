@@ -313,11 +313,24 @@ index 0000000..0f666d8
 +	  std::set<TraceEntry>);
 +};
 +#endif
+diff --git a/llvm_mode/afl-clang-fast.c b/llvm_mode/afl-clang-fast.c
+index d4202a6..5cc9436 100644
+--- a/llvm_mode/afl-clang-fast.c
++++ b/llvm_mode/afl-clang-fast.c
+@@ -208,7 +208,7 @@ static void edit_params(u32 argc, char** argv) {
+   if (!getenv("AFL_DONT_OPTIMIZE")) {
+ 
+     cc_params[cc_par_cnt++] = "-g";
+-    cc_params[cc_par_cnt++] = "-O3";
++//    cc_params[cc_par_cnt++] = "-O3";
+     cc_params[cc_par_cnt++] = "-funroll-loops";
+ 
+   }
 diff --git a/llvm_mode/afl-llvm-pass.so.cc b/llvm_mode/afl-llvm-pass.so.cc
-index 04f3ec4..979908b 100644
+index 04f3ec4..f8efcbb 100644
 --- a/llvm_mode/afl-llvm-pass.so.cc
 +++ b/llvm_mode/afl-llvm-pass.so.cc
-@@ -31,6 +31,11 @@
+@@ -31,13 +31,21 @@
  #include <stdlib.h>
  #include <unistd.h>
  
@@ -329,8 +342,9 @@ index 04f3ec4..979908b 100644
  #include "llvm/ADT/Statistic.h"
  #include "llvm/IR/IRBuilder.h"
  #include "llvm/IR/LegacyPassManager.h"
-@@ -38,6 +43,8 @@
+ #include "llvm/IR/Module.h"
  #include "llvm/Support/Debug.h"
++#include "llvm/Support/raw_ostream.h"
  #include "llvm/Transforms/IPO/PassManagerBuilder.h"
  
 +#include "TraceUtils.h"
@@ -338,19 +352,19 @@ index 04f3ec4..979908b 100644
  using namespace llvm;
  
  namespace {
-@@ -107,10 +114,43 @@ bool AFLCoverage::runOnModule(Module &M) {
+@@ -107,10 +115,51 @@ bool AFLCoverage::runOnModule(Module &M) {
    /* Instrument all the things! */
  
    int inst_blocks = 0;
--
--  for (auto &F : M)
-+  /* XXX FIXME(roachspray) what do you think :P */
++  /* XXX FIXME(roachspray) Make these P */
 +  std::set<TraceEntry> traceFile = TraceUtils::ParseTraceFile("trace.log");
 +  for (auto &F : M) {
 +    bool instrumentAllBlocks = false;
 +    if (F.isDeclaration() || F.isIntrinsic()) {
 +      continue;
 +    }
+ 
+-  for (auto &F : M)
 +    std::vector<const TraceEntry *> ftraces; 
 +    if (F.hasName() == false) {
 +      instrumentAllBlocks = true;
@@ -358,6 +372,7 @@ index 04f3ec4..979908b 100644
 +      std::string fname = F.getName().str();
 +      ftraces= TraceUtils::TraceByFunction(fname, traceFile);
 +      if (ftraces.empty()) {
++		// hm..is this what we want?
 +        instrumentAllBlocks = true;
 +      }
 +    }
@@ -366,7 +381,11 @@ index 04f3ec4..979908b 100644
 +      if (!instrumentAllBlocks) {
 +        // Possibly do this another way?
 +        Instruction *iwithMD = BB.getFirstNonPHI();
-+        std::string blkname = cast<MDString>(iwithMD->getMetadata("fnblk")->getOperand(0))->getString().str();
++		MDNode *mdn = iwithMD->getMetadata("fnblk");
++		if (mdn == NULL) {
++			continue;
++		} 
++        std::string blkname = cast<MDString>(mdn->getOperand(0))->getString().str();
 +        std::istringstream strm(blkname);
 +        std::string fn;
 +        std::string blknumstr;
@@ -380,12 +399,14 @@ index 04f3ec4..979908b 100644
 +            break;
 +          }
 +        }
-+        if (!instThisBlock) continue;
++        if (instThisBlock == false) {
++			continue;
++		}
 +      }
        BasicBlock::iterator IP = BB.getFirstInsertionPt();
        IRBuilder<> IRB(&(*IP));
  
-@@ -152,6 +192,7 @@ bool AFLCoverage::runOnModule(Module &M) {
+@@ -152,6 +201,7 @@ bool AFLCoverage::runOnModule(Module &M) {
        inst_blocks++;
  
      }

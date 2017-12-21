@@ -44,7 +44,7 @@ def loadConfig(path):
       if k not in pskin_vars.keys():
         pskin_vars[k] = jo[k]    
     if 'lib_trays' not in pskin_vars.keys():
-      pskin_vars['lib_trays'] = os.path.join(pskin_vars['ps_root'], "lib/libtrays/libtrays.a")
+      pskin_vars['lib_trays'] = os.path.join(pskin_vars['ps_root'], "libtrays/libtrays.a")
     if 'lib_trace' not in  pskin_vars.keys():
       pskin_vars['lib_trace'] = os.path.join(pskin_vars['ps_root'], "build/lib/TraceInject.so")
     if 'lib_prune' not in  pskin_vars.keys():

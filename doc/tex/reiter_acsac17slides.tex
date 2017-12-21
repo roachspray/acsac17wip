@@ -1,0 +1,143 @@
+\documentclass{beamer}
+\usepackage{algorithm2e}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{amsthm}
+\newtheorem{conj}{Conjecture}[section]
+\let\footnotesize\tiny
+
+%\title{Pruneskin: Fuzzing Program Slices}
+%\author{Andrew R. Reiter\\
+%\tiny CA Veracode}
+%\date{\today}
+
+\begin{document}
+
+%\frame{\titlepage}
+
+%\section{Investigating }
+\frame
+{
+	\frametitle{Pruneskin: Investigation into Fuzzing Program Slices}
+	\tiny
+	
+	\fboxsep=0pt
+		\noindent\hbox{%
+	\begin{minipage}[t]{0.48\linewidth}
+	High-level version of algorithm:
+	\begin{algorithm}[H]
+		\SetAlgoLined
+		\KwData{Program P, sample input I}
+		\KwResult{$C = $\{$c \in inputs(P) \vert exec(P,c) \rightarrow$ crash\}}
+		$A \leftarrow Analysis(P, I)$\;
+		$S_d \leftarrow Slice(P, A, $ depth\footnote{The reasoning for \emph{depth} is that the goal is to fuzz a subgraph of a graph and not separate.} $d)$\;
+		$\{c'_{d,i}\}_i \leftarrow Fuzz(S_d, I)$\;
+		\For{$c' \in \{c'_{d,i}\}_i$}{
+			$c \leftarrow MapCrash(P, S_d, c')$\;
+			$C.append(c)$\;
+		}
+	\end{algorithm}\end{minipage}}%
+\hfill%
+\fbox{
+	\begin{minipage}[t]{0.48\linewidth}	
+	\begin{conj} There exists a \text{Slice} algorithm such that the \text{MapCrash} algorithm either
+	\begin{itemize}
+	\item acts like Identity on input sample, or
+	\item maps samples crashing $S_d$ to samples crashing $P$ with minimal difficulty or human interaction (heh).
+	\end{itemize}
+	\end{conj}
+	\end{minipage}
+}
+
+\vfill	
+	A  \textbf{naive} starting approach is implemented:
+	\begin{itemize}
+	\item For \emph{Analysis()}: execution flow from a given desirable input (i.e. execution trace log)
+	\item For \emph{Slice()}: attempt to remove the non-exec'd basic blocks of functions reached, unless they are the destination
+	block for a compare-branch that we wish to keep (such as if (read() < 0) ...).
+	\item For \emph{MapCrash()}: fuzz original $P$ with input samples that are crashes from fuzzing $S_d$. 
+	with the idea being that under some measurable fuzzing space $\left\vert d(c) - d(c') \right\vert \leq$ something reasonable.
+	\end{itemize}
+	and using afl-fuzz.  But, many possibilities for Analysis, Slice, Fuzz, \& MapCrash functions. 
+	
+	
+	Find this code and horseplay: \url{https://github.com/roachspray/acsac17wip/blob/master/naive}
+}
+
+\frame
+{
+	\frametitle{Minimal set of results}
+	\tiny
+
+	
+	\begin{center}
+	\begin{tabular}{| c | c | c  | c | c | c |}
+	\hline
+	Program            & Input\footnote{all in repo}        & Slice Depth  & P 5h fuzz & S\_d 1h fuzz & Mapped 4h fuzz\footnote{uses inputs from slice fuzz output} \\ \hline
+	cracklib-2.9.2-5 & smalldict   &  1                 & 0             & 3                    & 0  \\
+	                 	&                  &  2 		  & 0 		   & 0 			& 0  \\
+	                 	&             	   & 	3 		 & 0 		   & 0 			& 0  \\ \hline
+	exifprobe current & tryone.jpg & 3 		 & 4 		   & 27 			& 37  \\ 
+	                  &            & 4 & 4 & 30 & 50  \\ 
+	                  &            & 5 & 4 & 27 & 13  \\ 
+	                  &            & 6 & 4 & 28 & 30  \\ \hline
+	tcpdump current   & ntp.pcap   & 6 & 0 & 0 & 0   \\ 
+	                  &   & 7 & 0 & 0 & 0   \\ 
+	                  &    & 8 & 0 & 0 & 0   \\ 
+	                  &    & 9 & 0 & 0 & 0   \\ \cline{2-6}
+                      & hcrt.pcap  & 7 & 0 & 1 & 0   \\
+                      &            & 8 & 0 & 6 & 0   \\ 
+                      &            & 9 & 0 & 0 & 0   \\
+                      &            & 10 & 0 & 0 & 0  \\ \cline{2-6}
+                      & arp.pcap   & 3 & 0 & 0 & 0  \\ 
+                      &    & 4 & 0 & 0 & 0  \\                    
+                      &    & 5 & 0 & 0 & 0  \\ 
+                      &    & 6 & 0 & 0 & 0  \\
+                      &    & 7 & 0 & 0 & 0  \\
+                      &    & 8 & 0 & 0 & 0  \\ \hline                                                                 
+	\end{tabular}
+	\end{center}
+
+
+	Fundamental issues with the above:	
+	\begin{itemize}
+	\item Timebox time selections and averaging of timebox results (handle randomness)
+	\item How to deal with (not) having groundtruth? Equality of bugs found, etc pose non-trivial issues. I yen for a
+	dataset of code, crash, time-til-found, hardware, etc etc.
+	\item Not listed: slice sizes seem invalid
+	\end{itemize}
+	
+}
+
+
+
+\frame
+{
+	\frametitle{Next Steps}
+	\tiny
+	\begin{itemize}
+	\item Improve \emph{Analysis} step. Initially included static value flow analysis, but the code was not working. Investigate clang analyze or hand developed. Also include the use of either manticore\footnote{\url{https://github.com/trailofbits/manticore}} or libdft\footnote{\url{https://www.cs.columbia.edu/~vpk/research/libdft/}}.
+
+
+	\item Improve \emph{Slice} step to use data flow information in block / function removal selection
+	\item Improve \emph{Slice} step by better dead code removal
+
+	\item Investigate  possible \emph{MapCrash} methods:
+	\begin{itemize}
+	\tiny
+	\item Cascade AFL 
+\[
+(C_d \leftarrow Fuzz(S_d, In)) \rightarrow (C_{d-1} \leftarrow Fuzz(S_{d-1}, C_d)) \rightarrow \ldots \rightarrow (C_0 \leftarrow Fuzz(P, C_1))
+\]
+	
+	\item Selective AFL instrumentation based on slicing information. See \footnote{https://github.com/roachspray/acsac17wip/blob/master/patches/afl-2.51b-optionally-instrument-based-on-trace.patch}
+	\item Investigate signaling AFL from undesirable paths. Equivalent to VUZZer with  weighting.
+	\item Generate crash trace from sample, use with manticore to guide program through solving CSPs as it goes toward crash state.
+	\end{itemize}
+	\end{itemize}
+	As you can tell, this work is still in it's infancy and there are many paths to investigate. Trying to determine best routes and
+	choices to keep the science legit is an important piece (i.e. some understanding of a ground truth). But, many other areas to play.
+	I would greatly appreciate anyone interested to combine forces, or outright take some ideas and go forth.
+	
+}
+\end{document}

@@ -23,7 +23,7 @@ The high level methodology being investigate is the following:
 
 ```
   A <- Analyze(P)
-  S <- Slice(P)
+  S <- Slice(P, A)
   {C'_i} <- Fuzz(S)
   CrashesP <- {}
   for each c' in {C'_i}

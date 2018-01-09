@@ -4,6 +4,13 @@ This is experimental code with many areas that could be improved.
 Much is hacked together and may require adjustment because of 
 hardcoded paths (sorry).
 
+
+Update: since this was a WIP, there is some updated work along this
+path. It will be placed into https://github.com/roachspray/FuzzingProgramSlices
+e.g., the exitblocks code there is still using naive analysis phase, basing
+modification on execution flow from an input sample, but inserts exit(0).
+
+
 ## Introduction
 
 The goal of this research is to investigate fuzzing program slices.

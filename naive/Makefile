@@ -151,9 +151,9 @@ clean:
 	$(QUIET)rm -rf build Pruneskin
 
 libs:
-	cd lib/libtrays && make -f Makefile	
+	cd libtrays && make -f Makefile	
 
 cleanlibs:
-	cd lib/libtrays && make -f Makefile	clean
+	cd libtrays && make -f Makefile	clean
 
 cleanall: clean cleanlibs

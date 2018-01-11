@@ -307,3 +307,13 @@ of clang/LLVM you have used for the target.bc generation.etc
 
 If need/want more info, let me know and I am happy to help. I also encourage
 people to help with more general issues or telling me it sucks :)
+
+
+# Acknowledgments 
+
+- Jared Carlson (@jcarlson23) for support and encouragement with ideas and as
+my LLVM mentor.
+
+- Veracode research for supporting this work.
+
+-

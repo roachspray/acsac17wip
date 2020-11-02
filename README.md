@@ -10,6 +10,13 @@ path. It will be placed into https://github.com/roachspray/FuzzingProgramSlices
 e.g., the exitblocks code there is still using naive analysis phase, basing
 modification on execution flow from an input sample, but inserts exit(0).
 
+Note that here and in FuzzingProgramSlices, the Pruneskin.cpp code is a bit
+wonked ... it is missing an if/then related to the trace code injection and
+setting of the output trace file. I believe that was me trying to remove 
+pass-dependencies where they were not required... that is fixable (easily), I
+just did not fix it yet (and only just now noticed it in this version
+unfortunately) 
+
 
 ## Introduction
 
